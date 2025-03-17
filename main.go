@@ -23,18 +23,27 @@ type Response struct {
 }
 
 func main() {
+
+	http.HandleFunc("/servers-list", serversListHandler)
+	http.HandleFunc("/default-vpn", defaultVPNHandler)
+	http.HandleFunc("/add-user", addUserHandler)
+	http.HandleFunc("/check-user", checkUserHandler)
+	//if _, err := getAllServersIP(); err != nil {
+	//	log.Fatalf("Error retrieving server IPs: %v", err)
+	//}
+
 	http.HandleFunc("/generate-ovpn", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-
+		log.Println("test")
 		var req Request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-
+		log.Printf(req.ClientName)
 		clientName := req.ClientName
 		serverIP := req.ServerIP
 		if clientName == "" {
@@ -119,6 +128,105 @@ func main() {
 		}
 	})
 
+	//http.HandleFunc("/servers", func(w http.ResponseWriter, r *http.Request) {
+	//	if r.Method != http.MethodGet {
+	//		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	//		return
+	//	}
+	//
+	//	//servers, err := getAllServersIP()
+	//	//if err != nil {
+	//	//	log.Printf("Error retrieving server data: %v", err)
+	//	//	http.Error(w, "Failed to retrieve server data", http.StatusInternalServerError)
+	//	//	return
+	//	//}
+	//
+	//	w.Header().Set("Content-Type", "application/json")
+	//	if err := json.NewEncoder(w).Encode(servers); err != nil {
+	//		log.Printf("Error encoding response: %v", err)
+	//		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	//		return
+	//	}
+	//})
+
 	log.Println("Server is running on localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func defaultVPNHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	server, err := findLeastLoadedServer()
+	if err != nil {
+		log.Printf("Ошибка поиска сервера: %v", err)
+		http.Error(w, "Не удалось найти доступный сервер", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(server); err != nil {
+		log.Printf("Ошибка кодирования JSON: %v", err)
+		http.Error(w, "Ошибка кодирования JSON", http.StatusInternalServerError)
+	}
+}
+
+func serversListHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	servers, err := getServersStructure()
+	if err != nil {
+		log.Printf("Ошибка получения данных: %v", err)
+		http.Error(w, "Не удалось получить список серверов", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(servers)
+}
+
+func addUserHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		DeviceID    string `json:"deviceid"`
+		Name        string `json:"name"`
+		OnboardInfo string `json:"onbordInfo"`
+	}
+
+	// Декодируем JSON-запрос
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Проверяем, что имя не пустое
+	if req.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Вызываем addUser() из user.go
+	userID, err := addUser(req.DeviceID, req.Name, req.OnboardInfo)
+	if err != nil {
+		log.Printf("Ошибка добавления пользователя: %v", err)
+		http.Error(w, "Ошибка при добавлении пользователя", http.StatusInternalServerError)
+		return
+	}
+
+	// Отправляем JSON-ответ
+	response := map[string]interface{}{
+		"message": "Пользователь успешно добавлен",
+		"user_id": userID,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
