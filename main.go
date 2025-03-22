@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"vpn/pkg"
 )
 
 // Request represents the incoming JSON payload with the client's name and server IP.
@@ -27,7 +28,7 @@ func main() {
 	http.HandleFunc("/servers-list", serversListHandler)
 	http.HandleFunc("/default-vpn", defaultVPNHandler)
 	http.HandleFunc("/add-user", addUserHandler)
-	http.HandleFunc("/check-user", checkUserHandler)
+	http.HandleFunc("/check-user", pkg.CheckUserHandler)
 	//if _, err := getAllServersIP(); err != nil {
 	//	log.Fatalf("Error retrieving server IPs: %v", err)
 	//}
@@ -159,7 +160,7 @@ func defaultVPNHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	server, err := findLeastLoadedServer()
+	server, err := pkg.FindLeastLoadedServer()
 	if err != nil {
 		log.Printf("Ошибка поиска сервера: %v", err)
 		http.Error(w, "Не удалось найти доступный сервер", http.StatusInternalServerError)
@@ -179,7 +180,7 @@ func serversListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	servers, err := getServersStructure()
+	servers, err := pkg.GetServersStructure()
 	if err != nil {
 		log.Printf("Ошибка получения данных: %v", err)
 		http.Error(w, "Не удалось получить список серверов", http.StatusInternalServerError)
@@ -200,6 +201,7 @@ func addUserHandler(w http.ResponseWriter, r *http.Request) {
 		DeviceID    string `json:"deviceid"`
 		Name        string `json:"name"`
 		OnboardInfo string `json:"onbordInfo"`
+		DateTrial   string `json:"date_trial"`
 	}
 
 	// Декодируем JSON-запрос
@@ -215,7 +217,7 @@ func addUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вызываем addUser() из user.go
-	userID, err := addUser(req.DeviceID, req.Name, req.OnboardInfo)
+	userID, err := pkg.AddUser(req.DeviceID, req.Name, req.OnboardInfo, req.DateTrial)
 	if err != nil {
 		log.Printf("Ошибка добавления пользователя: %v", err)
 		http.Error(w, "Ошибка при добавлении пользователя", http.StatusInternalServerError)
