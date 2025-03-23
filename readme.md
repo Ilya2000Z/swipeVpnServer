@@ -7,4 +7,5 @@ curl -X GET "http://localhost:8080/downl[sil.ovpn](sil.ovpn)oad-ovpn?client_name
 ### getServer
 curl -X GET http://localhost:8080/servers
 curl -X GET http://localhost:8080/servers-list
+curl -X GET http://93.183.81.113:8080/servers-list
 curl -X GET http://localhost:8080/default-vpn

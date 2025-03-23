@@ -29,7 +29,7 @@ func main() {
 	http.HandleFunc("/default-vpn", defaultVPNHandler)
 	http.HandleFunc("/add-user", addUserHandler)
 	http.HandleFunc("/check-user", pkg.CheckUserHandler)
-	//if _, err := getAllServersIP(); err != nil {
+	//if _, err := serversListHandler(); err != nil {
 	//	log.Fatalf("Error retrieving server IPs: %v", err)
 	//}
 
